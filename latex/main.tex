@@ -1,0 +1,711 @@
+\documentclass[12pt, a4paper]{article}
+
+% Pacotes essenciais
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{url}
+\usepackage{xcolor}
+
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny,
+    stepnumber=1,
+    numbersep=5pt,
+    frame=single,
+    breaklines=true,
+    breakatwhitespace=false,
+    showstringspaces=false,
+}
+
+\providecommand{\IBGEtab}[3]{%
+    \begin{center}
+        #1\vspace{0.1cm}\\
+        #2\vspace{0.1cm}\\
+        #3
+    \end{center}
+}
+
+\providecommand{\fonte}[1]{%
+    \vspace{0.1cm}
+    \small\textbf{Fonte:} #1
+}
+
+\geometry{left=3cm, right=2cm, top=3cm, bottom=2cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=blue,
+    pdftitle={Pré-Projeto de Pesquisa Operacional - MECAI},
+}
+
+\title{\textbf{Projeto de Pesquisa Operacional} \\ \vspace{0.2cm} \large{ICMC USP São Carlos} \\ \vspace{0.8cm} \large Otimização da Destinação da Produção de Laranja entre Mercado Interno e Indústria de Suco Considerando Sazonalidade de Preços e Janelas Operacionais de Colheita Utilizando Programação Linear e GurobiPy}
+
+\author{
+    \textbf{Alunos:}\\
+    Alexander Ferreira\\ 
+    Leandro De Andrade \\ 
+    \vspace{0.5cm}\\
+    \textbf{Professora:} Maristela Oliveira dos Santos
+}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+
+\pagenumbering{arabic}
+
+\section{Introdução}
+O Brasil é o maior produtor mundial de laranja, sendo o estado de São Paulo responsável pela maior parcela da produção nacional. A região de Ribeirão Preto está inserida no principal cinturão citrícola brasileiro, apresentando forte relevância econômica para o agronegócio.
+
+A comercialização da safra representa uma das decisões mais importantes para o produtor rural. Pequenas variações de preço entre diferentes períodos do ano podem impactar significativamente a receita obtida.
+
+Tradicionalmente, a produção é comercializada à medida que a fruta atinge o ponto ideal de colheita. Entretanto, existe certa flexibilidade operacional no manejo do pomar que permite postergar a colheita por alguns dias, possibilitando o aproveitamento de condições comerciais mais favoráveis.
+
+Dessa forma, técnicas de Pesquisa Operacional podem ser utilizadas para auxiliar o produtor na definição da melhor estratégia de comercialização, mapeando as alternativas de escoamento e de armazenagem temporária no pomar.
+
+\newpage
+
+\section{Problema de Pesquisa}
+Um produtor da região de Ribeirão Preto possui uma produção prevista de 100.000 toneladas de laranja durante o segundo semestre de 2025\cite{fundecitrus2025}.
+
+A produção pode ser destinada para:
+\begin{itemize}
+    \item Mercado Interno (fruta \textit{in natura});
+    \item Indústria de Suco.
+\end{itemize}
+
+A laranja não pode ser armazenada após a colheita por longos períodos devido à sua elevada perecibilidade. Entretanto, a colheita pode ser postergada no pomar dentro dos seguintes limites:
+\begin{itemize}
+    \item Mercado Interno: até 10 dias;
+    \item Indústria: até 20 dias.
+\end{itemize}
+
+O objetivo é determinar a melhor estratégia de destinação da produção para maximizar a receita da propriedade, decidindo quanto vender para o mercado, quanto para a indústria, e quanto postergar para os meses subsequentes.
+
+\section{Objetivos}
+
+\subsection{Objetivo Geral}
+Desenvolver um modelo de Programação Linear utilizando GurobiPy para maximizar a receita líquida total de venda da produção de laranjas no segundo semestre de 2025.
+
+\subsection{Objetivos Específicos}
+\begin{itemize}
+    \item Modelar matematicamente a destinação da produção;
+    \item Incorporar a sazonalidade dos preços;
+    \item Considerar janelas operacionais de colheita e restrições de contratos mínimos;
+    \item Implementar o modelo computacionalmente em GurobiPy;
+    \item Validar o modelo através da comparação com uma estratégia tradicional de venda imediata;
+    \item Realizar análise de sensibilidade em diferentes cenários de mercado.
+\end{itemize}
+
+\section{Materiais e Métodos}
+
+\subsection{Fonte dos Dados}
+Os dados utilizados para a construção do modelo e balizamento da pesquisa originam-se das seguintes fontes:
+\begin{itemize}
+    \item \textbf{Instituto Brasileiro de Geografia e Estatística (IBGE)}: Dados referentes à produção agrícola municipal, área colhida, produtividade e valor da produção\cite{faespsenar2026laranja, fundecitrus2025}.
+    \item \textbf{Fundo de Defesa da Citricultura (Fundecitrus)}: Estimativas de safra, inventário de árvores e área produtiva\cite{fundecitrus2025}.
+    \item \textbf{CEPEA/ESALQ-USP}: Séries históricas e evolução sazonal de preços da laranja para a indústria e para o mercado \textit{in natura}\cite{fundecitrus2025}.
+\end{itemize}
+
+\subsection{Premissas do Estudo}
+Adotou-se uma propriedade modelo com produção total considerada de 100.000 toneladas, distribuídas ao longo do semestre de acordo com a Tabela \ref{tab:producao}.
+
+\begin{table}[H]
+    \caption{Distribuição da produção no segundo semestre de 2025}
+    \label{tab:producao}
+    \IBGEtab{
+        \begin{tabular}{lc}
+        \toprule
+        \textbf{Mês} & \textbf{Produção (t)} \\
+        \midrule
+        Julho & 25.000 \\
+        Agosto & 20.000 \\
+        Setembro & 18.000 \\
+        Outubro & 15.000 \\
+        Novembro & 12.000 \\
+        Dezembro & 10.000 \\
+        \midrule
+        \textbf{Total} & \textbf{100.000} \\
+        \bottomrule
+        \end{tabular}
+    }{
+        \fonte{Elaborado pelos autores.}
+    }{}
+\end{table}
+
+\subsection{Parâmetros de Preços Utilizados}
+Os valores adotados refletem o comportamento sazonal de valorização da fruta nos períodos de entressafra e de maior demanda industrial, conforme detalhado na Tabela \ref{tab:precos}.
+
+\begin{table}[H]
+    \caption{Receita por Tonelada (R\$) - Mercado In Natura e Indústria}
+    \label{tab:precos}
+    \IBGEtab{
+        \begin{tabular}{lcc}
+        \toprule
+        \textbf{Mês} & \textbf{Mercado (R\$/t)} & \textbf{Indústria (R\$/t)} \\
+        \midrule
+        Julho & 1.700 & 1.450 \\
+        Agosto & 1.850 & 1.550 \\
+        Setembro & 2.000 & 1.700 \\
+        Outubro & 2.150 & 1.800 \\
+        Novembro & 2.250 & 1.850 \\
+        Dezembro & 2.300 & 1.900 \\
+        \bottomrule
+        \end{tabular}
+    }{
+        \fonte{Elaborado pelos autores com base em dados do CEPEA.}
+    }{}
+\end{table}
+
+\section{Modelagem Matemática}
+
+\subsection{Variáveis de Decisão}
+O modelo de otimização possui quatro conjuntos principais de variáveis de decisão:
+\begin{itemize}
+    \item $M_t$: Quantidade vendida para o mercado interno no mês $t$.
+    \item $I_t$: Quantidade vendida para a indústria de suco no mês $t$.
+    \item $TM_t$: Quantidade cuja colheita é postergada do mês $t$ para o mês seguinte visando comercialização no mercado interno.
+    \item $TI_t$: Quantidade cuja colheita é postergada do mês $t$ para o mês seguinte visando comercialização na indústria.
+\end{itemize}
+
+\subsection{Função Objetivo}
+O objetivo do modelo é maximizar a receita total da propriedade rural, dada pela soma do volume escoado multiplicado pelo preço em cada canal e período ($T$).
+\begin{equation*}
+\text{Max } Z = \sum_{t \in T} PM_t M_t + \sum_{t \in T} PI_t I_t
+\end{equation*}
+Sendo:
+\begin{itemize}
+    \item $Z$: Receita total da propriedade rural.
+    \item $PM_t$ e $PI_t$: Preços do mercado interno e da indústria no período $t$.
+    \item $M_t$ e $I_t$: Volumes destinados a cada canal.
+\end{itemize}
+
+\subsection{Restrições}
+
+\textbf{Balanço da Produção} \\
+O escoamento e as transferências de cada mês devem ser iguais à produção daquele mês somada às transferências recebidas do mês anterior.
+\begin{align*}
+    &\text{Julho: } M_{\text{Jul}} + I_{\text{Jul}} + TM_{\text{Jul}} + TI_{\text{Jul}} = 25000 \\
+    &\text{Agosto: } M_{\text{Ago}} + I_{\text{Ago}} + TM_{\text{Ago}} + TI_{\text{Ago}} = 20000 + TM_{\text{Jul}} + TI_{\text{Jul}} \\
+    &\text{Setembro: } M_{\text{Set}} + I_{\text{Set}} + TM_{\text{Set}} + TI_{\text{Set}} = 18000 + TM_{\text{Ago}} + TI_{\text{Ago}} \\
+    &\text{Outubro: } M_{\text{Out}} + I_{\text{Out}} + TM_{\text{Out}} + TI_{\text{Out}} = 15000 + TM_{\text{Set}} + TI_{\text{Set}} \\
+    &\text{Novembro: } M_{\text{Nov}} + I_{\text{Nov}} + TM_{\text{Nov}} + TI_{\text{Nov}} = 12000 + TM_{\text{Out}} + TI_{\text{Out}} \\
+    &\text{Dezembro: } M_{\text{Dez}} + I_{\text{Dez}} = 10000 + TM_{\text{Nov}} + TI_{\text{Nov}}
+\end{align*}
+
+\vspace{0.2cm}\noindent\textbf{Limites de Postergação no Pomar} \\
+Limita o volume que pode aguardar no pé, simulando os dias máximos de tolerância da fruta.
+\begin{align*}
+    TM_t &\le 0.20 \cdot Q_t \quad \text{(Máximo de 10 dias para Mercado)} \\
+    TI_t &\le 0.40 \cdot Q_t \quad \text{(Máximo de 20 dias para Indústria)}
+\end{align*}
+
+\vspace{0.2cm}\noindent\textbf{Restrições de Capacidade e Contrato} \\
+O mercado interno absorve no máximo 12.000t/mês, e a indústria exige um contrato mínimo global de 40.000t na safra.
+\begin{align*}
+    M_t &\le 12000 \\
+    \sum_{t \in T} I_t &\ge 40000
+\end{align*}
+
+\vspace{0.2cm}\noindent\textbf{Restrição de Não Negatividade}
+\begin{equation*}
+    M_t \ge 0, \quad I_t \ge 0, \quad TM_t \ge 0, \quad TI_t \ge 0
+\end{equation*}
+
+\section{Implementação Computacional e Análise de Sensibilidade}
+
+A implementação utilizou Python, bibliotecas de manipulação de dados (Pandas, Matplotlib) e a API de otimização GurobiPy, resolvendo o problema matemático através do Algoritmo Simplex. 
+
+\subsection{Estratégia Tradicional de Referência}
+Para fins de validação do ganho de eficiência, estipulou-se a "Estratégia Tradicional", onde assume-se que toda a produção é vendida imediatamente no mês da colheita, sem postergação (transferência zero) e priorizando o canal de maior preço do mês até seu limite.
+\begin{itemize}
+    \item \textbf{Receita Total Tradicional:} R\$ 192.240.000,00
+\end{itemize}
+
+O indicador de ganho do modelo otimizado baseia-se na fórmula:
+\begin{equation*}
+    \text{Ganho (\%)} = \frac{\text{Receita Otimizada} - \text{Receita Tradicional}}{\text{Receita Tradicional}} \times 100
+\end{equation*}
+
+\subsection{Definição dos Cenários Analisados}
+\begin{itemize}
+    \item \textbf{Cenário 1 (Base):} Preços originais, conforme pensamento empírico do produtor. \\
+    \textit{Objetivo:} Comercializar a produção sem planejamento, sem acompanhamento de mercado, tomando decisões de forma empírica.
+    
+    \item \textbf{Cenário 2 (Queda do Mercado Interno):} Redução de 15\% em todos os preços da fruta \textit{in natura}. \\
+    \textit{Objetivo:} Avaliar a dependência da receita à comercialização in natura.
+    
+    \item \textbf{Cenário 3 (Aumento da Indústria):} Aumento de 20\% nos preços pagos pela indústria. \\
+    \textit{Objetivo:} Avaliar a atratividade da indústria em períodos de maior demanda por suco.
+    
+    \item \textbf{Cenário 4 (Redução de Janelas):} Diminuição da capacidade de postergação (Mercado: de 20\% para 10\%; Indústria: de 40\% para 20\%). \\
+    \textit{Objetivo:} Avaliar o impacto da redução da flexibilidade operacional da colheita sobre a receita.
+\end{itemize}
+
+
+\section{Resultados e Discussão}
+
+\subsection{Desempenho por Cenário}
+
+\textbf{Cenário 1 – Base} \\
+É o cenário de referência. Como os preços do mercado interno são sempre superiores, o modelo ocupa totalmente a capacidade mensal (\textit{12.000 t/mês}), direcionando o excedente à indústria e otimizando as datas de colheita.
+\begin{itemize}
+    \item \textbf{Receita Máxima:} R\$ 192.240.000,00
+    \item \textbf{Volumes Direcionados:} Mercado (60.000t) | Indústria (40.000t)
+\end{itemize}
+
+\vspace{0.2cm}\noindent\textbf{Cenário 2 – Queda de 15\% no Mercado Interno} \\
+Com a queda, alguns meses apresentam preços do mercado interno inferiores ou muito próximos aos da indústria. O Gurobi reage reduzindo a atratividade do varejo e realocando grandes volumes para processamento industrial.
+\begin{itemize}
+    \item \textbf{Receita Máxima:} R\$ 173.250.000,00
+    \item \textbf{Volumes Direcionados:} Mercado (48.000t) | Indústria (52.000t)
+\end{itemize}
+
+\vspace{0.2cm}\noindent\textbf{Cenário 3 – Aumento de 20\% na Indústria} \\
+A indústria torna-se altamente rentável. O modelo rompe os padrões de abastecimento primário do mercado e concentra pesadamente as vendas para as fábricas de suco, indicando uma maior demanda do produto pela varejo.
+\begin{itemize}
+    \item \textbf{Receita Máxima:} R\$ 206.088.000,00
+    \item \textbf{Volumes Direcionados:} Mercado (24.000t) | Indústria (76.000t)
+\end{itemize}
+
+\vspace{0.2cm}\noindent\textbf{Cenário 4 – Redução das Janelas Operacionais} \\
+O produtor perde flexibilidade para reter a laranja no pé reduzindo a janela operacional em 50\% (Varejo passa de 10 dias para 5 dias e Industria de 20 dias para 10 dias). Consequentemente, não consegue surfar os picos de preço de final de ano na mesma proporção.
+\begin{itemize}
+    \item \textbf{Receita Máxima:} R\$ 189.645.000,00
+    \item \textbf{Volumes Direcionados:} Mercado (60.000t) | Indústria (40.000t)
+\end{itemize}
+
+\subsection{Comparativo Geral Otimizado}
+
+A consolidação de todos os cenários pode ser visualizada na Tabela \ref{tab:comparativo} e na Figura \ref{fig:receita_maxima}.
+
+\begin{table}[H]
+    \caption{Comparativo Consolidado de Receitas e Volumes por Cenário}
+    \label{tab:comparativo}
+    \IBGEtab{
+        \resizebox{\textwidth}{!}{%
+            \begin{tabular}{lcccc}
+            \toprule
+            \textbf{Cenário} & \textbf{Receita Total (R\$)} & \textbf{Mercado (t)} & \textbf{Indústria (t)} & \textbf{$\Delta$ Receita (\%)} \\
+            \midrule
+            1. Base & 192.240.000,00 & 60.000 & 40.000 & 0,00 \\
+            2. Mercado -15\% & 173.250.000,00 & 48.000 & 52.000 & -9,87 \\
+            3. Indústria +20\% & 206.088.000,00 & 24.000 & 76.000 & +7,20 \\
+            4. Janela Reduzida & 189.645.000,00 & 60.000 & 40.000 & -1,34 \\
+            \bottomrule
+            \end{tabular}%
+        }
+    }{
+        \fonte{Elaborado pelos autores - Comparativo dos Cenários.}
+    }{}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \caption{Receita Máxima por Cenário (em milhões de R\$)}
+    \vspace{0.2cm}
+    \includegraphics[width=0.75\linewidth]{grafico.png} \\
+    \fonte{Elaborado pelos autores - Comparativo dos Cenários.}
+    \label{fig:receita_maxima}
+\end{figure}
+
+\subsection{Principais Indicadores Obtidos}
+\begin{itemize}
+    \item \textbf{Cenário Base:} Base (R\$ 192.240.000,00).
+    \item \textbf{Cenário Mercado -15\%:} Mercado -15\% (R\$ 173.250.000,00).
+    \item \textbf{Cenário - melhor identificado:} Indústria +20\% (R\$ 206.088.000,00).
+    \item \textbf{Cenário Janela Reduzida:} Janela Reduzida\% (R\$ 189.645.000,00).\\[0.3cm]
+    \textbf{Ganho de Otimização:} O melhor cenário alcançado pela Programação Linear reflete um ganho puro de \textbf{+7,20\%} de rentabilidade global em relação à Estratégia Tradicional de venda empírico do produtor.
+\end{itemize}
+
+\section{Conclusões}
+O conjunto dos cenários evidenciou que a receita citrícola é sensível às variações de mercado e às restrições operacionais, e o modelo de Programação Linear proposto, resolvido pelo algoritmo Simplex, mostrou-se capaz de representar de forma realista o processo decisório, com a perecibilidade da fruta e as janelas de postergação no pomar incorporadas de forma explícita, oferecendo suporte quantitativo à estratégia ótima de comercialização. \\[0.05cm]
+
+As simulações evidenciam dinâmicas cruciais:
+\begin{itemize}
+    \item A flexibilização da colheita tem um valor econômico mensurável. No Cenário 4 (Janela Reduzida) a receita cai para R\$ 189,65 milhões, uma perda R\$ 2,59 (-1,34\%) em relação a Base. Isso mostra que reduzir as janelas de postergação limita a capacidade de capturar preços melhores. 
+     \item O mercado interno é vulnerável a quedas de preços. No Cenário 2 (Cenário Mercado -15\%) a receita despenca para R\$ 173,25 milhões, uma redução de R\$ 19 milhões (-9,87\%) em relação a Base.
+    \item A rentabilidade é altamente sensível ao preço pago. No Cenário 3 (Indústria +20\%) a receita sobe para R\$ 206,09 milhões, um ganho de R\$ 13,85 milhões (+7,20\%) em relação a Base. O volume destinado à indústria aumenta para 76.000t, evidenciando que esse canal se torna prioritário quando valorizado. Com isso, o modelo otimizado supera a estratégia tradicional, empírica do produtor.  
+\end{itemize}
+
+A aplicação prática do algoritmo Simplex via GurobiPy demonstrou-se robusta, fornecendo uma ferramenta gerencial objetiva. Os resultados provam que a Pesquisa Operacional aplicada ao agronegócio permite transformar a intuição empírica da comercialização de commodities em um modelo quantitativo altamente eficiente, garantindo a maximização do faturamento rural.\\[0.03cm]
+
+Para garantir transparência e permitir a consulta e a reprodução do trabalho, o projeto foi disponibilizado publicamente no GitHub, podendo ser acessado pelo seguinte endereço:
+
+
+\begin{center}
+\href{https://github.com/alexferrei198170/Projeto-Pesquisa-Operacional-Otimiza-o-Destina-o-Produ-o-Laranja-}{\textbf{Repositório do projeto no GitHub}}
+\end{center}
+
+% Este é um comentário PAREI=FALTA ALTERAR O CODIGO E REFERENCIAS
+
+\newpage
+\appendix
+\section{Código Fonte - GurobiPy}
+\begin{lstlisting}[language=Python, title=Otimização da Destinação da Produção de Laranja entre Mercado Interno e Indústria]
+from gurobipy import *
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# FUNÇÃO DE OTIMIZAÇÃO
+def executar_modelo(
+    nome_cenario,
+    preco_mercado,
+    preco_industria,
+    perc_mercado=0.20,
+    perc_industria=0.40
+):
+    modelo = Model(nome_cenario)
+    modelo.setParam("OutputFlag", 0)
+    meses = [
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro"
+    ]
+    producao = {
+        "Julho": 25000,
+        "Agosto": 20000,
+        "Setembro": 18000,
+        "Outubro": 15000,
+        "Novembro": 12000,
+        "Dezembro": 10000
+    }
+    # VARIÁVEIS DE DECISÃO
+    M = modelo.addVars(meses, lb=0, name="Mercado")
+    I = modelo.addVars(meses, lb=0, name="Industria")
+    TM = modelo.addVars(
+        meses[:-1],
+        lb=0,
+        name="TransferenciaMercado"
+    )
+    TI = modelo.addVars(
+        meses[:-1],
+        lb=0,
+        name="TransferenciaIndustria"
+    )
+    # FUNÇÃO OBJETIVO
+    modelo.setObjective(
+        quicksum(
+            preco_mercado[m] * M[m]
+            for m in meses
+        )
+        +
+        quicksum(
+            preco_industria[m] * I[m]
+            for m in meses
+        ),
+        GRB.MAXIMIZE
+    )
+    # BALANÇO DE PRODUÇÃO
+    # Julho
+    modelo.addConstr(
+        M["Julho"]
+        +
+        I["Julho"]
+        +
+        TM["Julho"]
+        +
+        TI["Julho"]
+        ==
+        producao["Julho"]
+    )
+    # Agosto até Novembro
+    for i in range(1, 5):
+        atual = meses[i]
+        anterior = meses[i - 1]
+        modelo.addConstr(
+            M[atual]
+            +
+            I[atual]
+            +
+            TM[atual]
+            +
+            TI[atual]
+            ==
+            producao[atual]
+            +
+            TM[anterior]
+            +
+            TI[anterior]
+        )
+    # Dezembro
+    modelo.addConstr(
+        M["Dezembro"]
+        +
+        I["Dezembro"]
+        ==
+        producao["Dezembro"]
+        +
+        TM["Novembro"]
+        +
+        TI["Novembro"]
+    )
+
+    # POSTERGAÇÃO DA COLHEITA
+    for mes in meses[:-1]:
+        modelo.addConstr(
+            TM[mes]
+            <=
+            perc_mercado * producao[mes]
+        )
+        modelo.addConstr(
+            TI[mes]
+            <=
+            perc_industria * producao[mes]
+        )
+    # CAPACIDADE DO MERCADO INTERNO
+    for mes in meses:
+        modelo.addConstr(
+            M[mes]
+            <=
+            12000
+        )
+    # CONTRATO MÍNIMO COM A INDÚSTRIA
+    modelo.addConstr(
+        quicksum(
+            I[m]
+            for m in meses
+        )
+        >=
+        40000
+    )
+    # RESOLUÇÃO
+    modelo.optimize()
+    if modelo.Status != GRB.OPTIMAL:
+        raise Exception(
+            f"Não foi encontrada solução ótima para {nome_cenario}"
+        )
+    receita = modelo.ObjVal
+    mercado_total = sum(
+        M[m].X
+        for m in meses
+    )
+    industria_total = sum(
+        I[m].X
+        for m in meses
+    )
+    return {
+        "receita": receita,
+        "mercado": mercado_total,
+        "industria": industria_total
+    }
+# RECEITA TRADICIONAL (SEM POSTERGAÇÃO)
+receita_tradicional = (
+    (12000 * 1700 + 13000 * 1450)
+    +
+    (12000 * 1850 + 8000 * 1550)
+    +
+    (12000 * 2000 + 6000 * 1700)
+    +
+    (12000 * 2150 + 3000 * 1800)
+    +
+    (12000 * 2250)
+    +
+    (10000 * 2300)
+)
+# PREÇOS 
+mercado_base = {
+    "Julho": 1700,
+    "Agosto": 1850,
+    "Setembro": 2000,
+    "Outubro": 2150,
+    "Novembro": 2250,
+    "Dezembro": 2300
+}
+industria_base = {
+    "Julho": 1450,
+    "Agosto": 1550,
+    "Setembro": 1700,
+    "Outubro": 1800,
+    "Novembro": 1850,
+    "Dezembro": 1900
+}
+# CENÁRIO 1 # BASE
+cenario1 = executar_modelo(
+    "Base",
+    mercado_base,
+    industria_base
+)
+# CENÁRIO 2 # MERCADO -15%
+mercado_c2 = {
+    k: v * 0.85
+    for k, v in mercado_base.items()
+}
+cenario2 = executar_modelo(
+    "Mercado -15%",
+    mercado_c2,
+    industria_base
+)
+# CENÁRIO 3 # INDÚSTRIA +20%
+industria_c3 = {
+    k: v * 1.20
+    for k, v in industria_base.items()
+}
+cenario3 = executar_modelo(
+    "Indústria +20%",
+    mercado_base,
+    industria_c3
+)
+# CENÁRIO 4 # REDUÇÃO DAS JANELAS
+cenario4 = executar_modelo(
+    "Janela Reduzida",
+    mercado_base,
+    industria_base,
+    perc_mercado=0.10,
+    perc_industria=0.20
+)
+# COMPARATIVO
+comparativo = pd.DataFrame({
+    "Cenário": [
+        "Base",
+        "Mercado -15%",
+        "Indústria +20%",
+        "Janela Reduzida"
+    ],
+    "Receita": [
+        cenario1["receita"],
+        cenario2["receita"],
+        cenario3["receita"],
+        cenario4["receita"]
+    ],
+    "Mercado Interno (t)": [
+        cenario1["mercado"],
+        cenario2["mercado"],
+        cenario3["mercado"],
+        cenario4["mercado"]
+    ],
+    "Indústria (t)": [
+        cenario1["industria"],
+        cenario2["industria"],
+        cenario3["industria"],
+        cenario4["industria"]
+    ]
+})
+comparativo["Variação (%)"] = (
+    (
+        comparativo["Receita"]
+        -
+        cenario1["receita"]
+    )
+    /
+    cenario1["receita"]
+) * 100
+print("\n")
+print("=" * 100)
+print("COMPARATIVO DOS CENÁRIOS")
+print("=" * 100)
+print(comparativo)
+# GRÁFICO
+plt.figure(figsize=(10,6))
+# Cores específicas para cada cenário
+cores = ["orange","gold","green","blue"]
+# Barras
+plt.bar(comparativo["Cenário"], comparativo["Receita"]/1e6, color=cores)
+# Título e eixos
+plt.title("Receita Máxima por Cenário")
+plt.ylabel("Receita (Milhões de R$)")
+plt.grid(axis="y", alpha=0.3)
+# Valores acima das barras
+for i, valor in enumerate(comparativo["Receita"]):
+    plt.text(i, valor/1e6 + 0.5, f"{valor/1e6:.2f}", ha="center")
+plt.tight_layout()
+plt.show()
+# CONCLUSÕES AUTOMÁTICAS
+melhor = comparativo.loc[
+    comparativo["Receita"].idxmax()
+]
+print("\n")
+print("=" * 100)
+print("CONCLUSÕES")
+print("=" * 100)
+print(
+    f"Melhor Cenário: "
+    f"{melhor['Cenário']}"
+)
+print(
+    f"Receita Máxima: "
+    f"R$ {melhor['Receita']:,.2f}"
+)
+print("\nINTERPRETAÇÃO")
+print(
+    "- O modelo identifica a alocação ótima entre mercado interno e indústria."
+)
+print(
+    "- A postergação limitada da colheita possui valor econômico."
+)
+print(
+    "- A indústria torna-se mais atrativa quando seus preços aumentam."
+)
+print(
+    "- A redução das janelas operacionais diminui a flexibilidade do sistema."
+)
+print(
+    "- A Programação Linear mostrou-se eficaz como ferramenta de apoio à decisão."
+)
+\end{lstlisting}
+
+\newpage
+\begin{thebibliography}{99}
+
+\bibitem{boldrini1984}
+J. L. Boldrini et al. \textit{Álgebra Linear e Aplicações}. Harbra, 1984.
+
+\bibitem{cuminato2014}
+J. A. Cuminato and V. Ruas. Unification of distance inequalities. \textit{Computational and Applied Mathematics}, 2014.
+
+\bibitem{jafelice2014}
+R. M. Jafelice et al. Study of the dynamics of HIV. \textit{Computational and Applied Mathematics}, 2014.
+
+\bibitem{santos2013}
+I. L. D. Santos e G. N. Silva. Controle ótimo em escalas temporais. \textit{SBMAC}, 2013.
+
+\bibitem{cepea2026}
+CEPEA – Centro de Estudos Avançados em Economia Aplicada. Indicadores agropecuários: Citros, 2026.
+
+\bibitem{fundecitrus2025}
+Fundecitrus. Inventário de árvores de citros do cinturão citrícola de São Paulo e triângulo/sudoeste mineiro. \textit{Technical report}, Fundo de Defesa da Citricultura, Araraquara, SP, 2025. Acessado em: 16 set. 2026.
+
+\end{thebibliography}
+
+%================================================================================
+% Referências Bibliográficas
+%\bibliographystyle{plain}
+%\bibliography{referencias}
+% Arquivo contendo as referências
+%================================================================================
+
+\end{document}
+
+
+
+
+% Referências Bibliográficas
+
+\begin{thebibliography}{99}
+\bibitem{cepea} CEPEA - Centro de Estudos Avançados em Economia Aplicada. Indicadores agropecuários: Citros, 2026.
+\bibitem{faesp} Federação da Agricultura e do Serviço Nacional de Aprendizagem Rural de São Paulo - FAESP/SENAR. Laranja paulista aproxima culturas e conecta o mundo, 2026.
+\bibitem{ferreira2026} FERREIRA, Alexander; NESPOLO, Renan Guilherme. Previsão de commodity laranja utilizando métodos de regressão e ciência de dados. \textit{Interface Tecnológica}, 22(2):303-315, 2026.
+\bibitem{fundecitrus2025} FUNDECITRUS. Inventário de árvores de citros do cinturão citrícola de São Paulo e Triângulo/Sudoeste Mineiro. Relatório Técnico, Fundo de Defesa da Citricultura, Araraquara, SP, 2025.
+\end{thebibliography}
