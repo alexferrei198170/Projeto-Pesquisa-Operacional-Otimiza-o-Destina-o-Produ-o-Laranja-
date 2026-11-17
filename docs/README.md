@@ -50,7 +50,7 @@ Foram simulados quatro cenários para análise de sensibilidade:
 
 ## Autores
 
-* Alexander Ferreira (ICMC-USP) - ferreira.alexander@aol.com
+* Alexander Ferreira (ICMC-USP) - alexferrei198178@gmail.com
 * Leandro de Andrade (ICMC-USP) - andradeleandro@usp.br
 
 ## Agradecimentos e Fontes de Dados
