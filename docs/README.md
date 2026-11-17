@@ -1,6 +1,7 @@
-# WMECAI 2026 - Otimização da Destinação da Produção de Laranja
+# Tópicos em Pesquisa Operacional (2026) - Otimização da Destinação da Produção de Laranja
 
-Repositório referente ao trabalho apresentado no V Workshop de Matemática, Estatística e Computação Aplicadas à Indústria (CEMEAI / ICMC-USP). 
+Repositório referente ao trabalho apresentado no Mestrado MECAI-USP de São Carlos-SP, na matéria Tópicos em Pesquisa Operacional: 
+Otimização da Destinação da Produção de Laranja entre Mercado Interno e Indústria de Suco Considerando Sazonalidade de Preços e Janelas Operacionais de Colheita Utilizando Programação Linear e GurobiPy
 
 O projeto contém um modelo de Programação Linear desenvolvido para apoiar a tomada de decisão na destinação de safras de laranja entre o mercado interno (fruta *in natura*) e a indústria de suco.
 
